@@ -1,0 +1,6 @@
+BENCHMARK PYTHON - Best Fit Decoder
+Tempo: 60s por instância
+==================================================
+100_5_v2.txt: 45 sol/s, melhor=471.01
+100_10_v2.txt: 36 sol/s, melhor=467.20
+100_15_v2.txt: 34 sol/s, melhor=421.98

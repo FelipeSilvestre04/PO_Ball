@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modelo de Sequenciamento de Linha v1.0</title>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        :root {
+            --bg-primary: #0d1117;
+            --bg-secondary: #161b22;
+            --bg-tertiary: #21262d;
+            --text-primary: #e6edf3;
+            --text-secondary: #8b949e;
+            --accent: #58a6ff;
+            --accent-green: #3fb950;
+            --accent-yellow: #d29922;
+            --accent-red: #f85149;
+            --border: #30363d;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, var(--accent), var(--accent-green));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: var(--text-secondary);
+            margin-bottom: 2rem;
+            font-size: 0.9rem;
+        }
+
+        .section {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            margin-bottom: 1rem;
+            overflow: hidden;
+        }
+
+        .section-header {
+            background: var(--bg-tertiary);
+            padding: 1rem 1.5rem;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            user-select: none;
+            transition: background 0.2s;
+        }
+
+        .section-header:hover {
+            background: #2d333b;
+        }
+
+        .section-header h2 {
+            font-size: 1.1rem;
+            color: var(--accent);
+        }
+
+        .section-header .toggle {
+            font-size: 1.2rem;
+            transition: transform 0.3s;
+        }
+
+        .section.collapsed .toggle {
+            transform: rotate(-90deg);
+        }
+
+        .section.collapsed .section-content {
+            display: none;
+        }
+
+        .section-content {
+            padding: 1.5rem;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+            font-size: 0.9rem;
+        }
+
+        th, td {
+            padding: 0.75rem 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        th {
+            background: var(--bg-tertiary);
+            color: var(--accent);
+            font-weight: 600;
+        }
+
+        tr:hover {
+            background: rgba(88, 166, 255, 0.05);
+        }
+
+        .formula-box {
+            background: var(--bg-tertiary);
+            border-left: 4px solid var(--accent);
+            padding: 1rem 1.5rem;
+            margin: 1rem 0;
+            border-radius: 0 8px 8px 0;
+            overflow-x: auto;
+        }
+
+        .formula-box.objective {
+            border-left-color: var(--accent-green);
+        }
+
+        .formula-box.constraint {
+            border-left-color: var(--accent-yellow);
+        }
+
+        .alert {
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+
+        .alert-info {
+            background: rgba(88, 166, 255, 0.1);
+            border: 1px solid rgba(88, 166, 255, 0.3);
+        }
+
+        .alert-warning {
+            background: rgba(210, 153, 34, 0.1);
+            border: 1px solid rgba(210, 153, 34, 0.3);
+        }
+
+        .alert-success {
+            background: rgba(63, 185, 80, 0.1);
+            border: 1px solid rgba(63, 185, 80, 0.3);
+        }
+
+        .tag {
+            display: inline-block;
+            padding: 0.2rem 0.6rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-right: 0.5rem;
+        }
+
+        .tag-continuous { background: rgba(63, 185, 80, 0.2); color: var(--accent-green); }
+        .tag-binary { background: rgba(248, 81, 73, 0.2); color: var(--accent-red); }
+        .tag-param { background: rgba(88, 166, 255, 0.2); color: var(--accent); }
+
+        .flow-diagram {
+            background: var(--bg-tertiary);
+            padding: 1.5rem;
+            border-radius: 8px;
+            text-align: center;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+            overflow-x: auto;
+            white-space: pre;
+            line-height: 1.4;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1rem;
+        }
+
+        .card {
+            background: var(--bg-tertiary);
+            padding: 1rem;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+
+        .card h4 {
+            color: var(--accent);
+            margin-bottom: 0.5rem;
+            font-size: 0.95rem;
+        }
+
+        .card p {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+        }
+
+        code {
+            background: var(--bg-tertiary);
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+            color: var(--accent-green);
+        }
+
+        .quick-ref {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1rem;
+            max-width: 200px;
+            font-size: 0.8rem;
+            z-index: 100;
+        }
+
+        .quick-ref h4 {
+            color: var(--accent);
+            margin-bottom: 0.5rem;
+        }
+
+        .quick-ref a {
+            display: block;
+            color: var(--text-secondary);
+            text-decoration: none;
+            padding: 0.25rem 0;
+            transition: color 0.2s;
+        }
+
+        .quick-ref a:hover {
+            color: var(--accent);
+        }
+
+        @media (max-width: 768px) {
+            .quick-ref { display: none; }
+            body { padding: 1rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📊 Modelo de Sequenciamento de Linha</h1>
+        <p class="subtitle">Documentação Técnica v1.0 | LineSchedulingV1</p>
+
+        <!-- Quick Reference -->
+        <nav class="quick-ref">
+            <h4>🔗 Navegação</h4>
+            <a href="#visao-geral">Visão Geral</a>
+            <a href="#formulacao">Formulação</a>
+            <a href="#restricoes">Restrições</a>
+            <a href="#instancias">Instâncias</a>
+            <a href="#implementacao">Implementação</a>
+        </nav>
+
+        <!-- VISÃO GERAL -->
+        <div class="section" id="visao-geral">
+            <div class="section-header" onclick="toggleSection(this)">
+                <h2>1. Visão Geral do Problema</h2>
+                <span class="toggle">▼</span>
+            </div>
+            <div class="section-content">
+                <p>O modelo resolve um problema de <strong>Dimensionamento de Lotes e Sequenciamento</strong> (Lot-Sizing and Scheduling) monomáquina.</p>
+                
+                <div class="alert alert-info">
+                    <strong>💡 Variação do GLSP</strong> (General Lot-Sizing and Scheduling Problem) - garante no máximo uma troca de setup por microperíodo.
+                </div>
+
+                <table>
+                    <tr>
+                        <th>Característica</th>
+                        <th>Descrição</th>
+                    </tr>
+                    <tr>
+                        <td><strong>Setup Dependente</strong></td>
+                        <td>Custo e tempo de troca dependem do produto anterior \(j\) e próximo \(i\)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Horizonte Discreto</strong></td>
+                        <td>Tempo dividido em períodos \(t\) (buckets configuráveis em horas)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Setup Carry-Over</strong></td>
+                        <td>Conservação de estado: se \(i\) termina em \(t-1\), continua em \(t\) sem setup</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Backlog/Inventário</strong></td>
+                        <td>Demanda atendida por produção, estoque ou postergação (com penalidade)</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <!-- FORMULAÇÃO MATEMÁTICA -->
+        <div class="section" id="formulacao">
+            <div class="section-header" onclick="toggleSection(this)">
+                <h2>2. Formulação Matemática</h2>
+                <span class="toggle">▼</span>
+            </div>
+            <div class="section-content">
+                
+                <h3 style="margin-bottom: 1rem; color: var(--text-secondary)">2.1 Conjuntos e Índices</h3>
+                <table>
+                    <tr><th>Símbolo</th><th>Descrição</th></tr>
+                    <tr><td>\(i, j \in P\)</td><td>Conjunto de produtos (SKUs)</td></tr>
+                    <tr><td>\(t \in T\)</td><td>Períodos de planejamento \((T_1, ..., T_m)\). \(T_0\) = período fantasma</td></tr>
+                </table>
+
+                <h3 style="margin: 1.5rem 0 1rem; color: var(--text-secondary)">2.2 Parâmetros</h3>
+                <table>
+                    <tr><th>Parâmetro</th><th>Descrição</th></tr>
+                    <tr><td><span class="tag tag-param">INPUT</span>\(D_{it}\)</td><td>Demanda do produto \(i\) no período \(t\)</td></tr>
+                    <tr><td><span class="tag tag-param">INPUT</span>\(C_t\)</td><td>Capacidade de tempo disponível no período \(t\) (minutos)</td></tr>
+                    <tr><td><span class="tag tag-param">INPUT</span>\(T_t\)</td><td>Tempo para produzir 1000 unidades</td></tr>
+                    <tr><td><span class="tag tag-param">INPUT</span>\(SC_{ij}\)</td><td>Custo de setup para trocar de \(j\) para \(i\)</td></tr>
+                    <tr><td><span class="tag tag-param">INPUT</span>\(ST_{ij}\)</td><td>Tempo de setup (downtime) para trocar de \(j\) para \(i\)</td></tr>
+                </table>
+
+                <h3 style="margin: 1.5rem 0 1rem; color: var(--text-secondary)">2.3 Variáveis de Decisão</h3>
+                <table>
+                    <tr><th>Variável</th><th>Tipo</th><th>Descrição</th></tr>
+                    <tr><td>\(X_{it}\)</td><td><span class="tag tag-continuous">CONTÍNUA</span></td><td>Quantidade produzida do produto \(i\) no período \(t\)</td></tr>
+                    <tr><td>\(I_{it}\)</td><td><span class="tag tag-continuous">CONTÍNUA</span></td><td>Nível de estoque do produto \(i\) ao final de \(t\)</td></tr>
+                    <tr><td>\(B_{it}\)</td><td><span class="tag tag-continuous">CONTÍNUA</span></td><td>Nível de backlog (demanda não atendida)</td></tr>
+                    <tr><td>\(Z_{ijt}\)</td><td><span class="tag tag-binary">BINÁRIA</span></td><td>Setup: troca PARA \(i\), vindo DE \(j\) no período \(t\)</td></tr>
+                    <tr><td>\(ZA_{it}\)</td><td><span class="tag tag-binary">BINÁRIA</span></td><td>Setup Carry-Over: máquina configurada para \(i\) do período anterior</td></tr>
+                </table>
+
+                <h3 style="margin: 1.5rem 0 1rem; color: var(--text-secondary)">2.4 Função Objetivo</h3>
+                <div class="formula-box objective">
+                    <strong>MINIMIZAR:</strong>
+                    \[\min \sum_{i,t} \left( W_{backlog} \cdot B_{it} + W_{inv} \cdot I_{it} \right) + \sum_{i,j,t} \left( SC_{ij} \cdot Z_{ijt} \right)\]
+                </div>
+                <p style="color: var(--text-secondary); font-size: 0.9rem;">Na implementação, o custo de setup é multiplicado por 2 para penalizar trocas excessivas.</p>
+            </div>
+        </div>
+
+        <!-- RESTRIÇÕES -->
+        <div class="section" id="restricoes">
+            <div class="section-header" onclick="toggleSection(this)">
+                <h2>3. Restrições</h2>
+                <span class="toggle">▼</span>
+            </div>
+            <div class="section-content">
+                
+                <h3 style="margin-bottom: 1rem;">3.1 Balanceamento de Massa</h3>
+                <div class="formula-box constraint">
+                    \[X_{it} + I_{i(t-1)} - I_{it} + B_{it} - B_{i(t-1)} = D_{it}\]
+                </div>
+                <p style="color: var(--text-secondary);">Demanda = Produção + Estoque Anterior - Estoque Atual + Variação de Backlog</p>
+
+                <h3 style="margin: 1.5rem 0 1rem;">3.2 Lógica de Setup e Produção</h3>
+                <div class="formula-box constraint">
+                    \[X_{it} \le M \cdot \left(\sum_{j} Z_{ijt} + ZA_{it}\right)\]
+                </div>
+                <p style="color: var(--text-secondary);">Só produz \(i\) se houver setup para \(i\) ou configuração já estava em \(i\)</p>
+
+                <div class="formula-box constraint">
+                    \[\sum_{j} Z_{ijt} \le X_{it} + X_{i(t+1)}\]
+                </div>
+                <p style="color: var(--text-secondary);">Setup só ocorre se houver produção em \(t\) ou \(t+1\) (evita setups fantasmas)</p>
+
+                <h3 style="margin: 1.5rem 0 1rem;">3.3 Capacidade</h3>
+                <div class="formula-box constraint">
+                    \[\sum_{i} \left(X_{it} \cdot T_t\right) + \sum_{i,j} \left(Z_{ijt} \cdot ST_{ji}\right) \le C_t\]
+                </div>
+                <p style="color: var(--text-secondary);">Tempo de produção + Tempos de setup ≤ Capacidade do período</p>
+
+                <h3 style="margin: 1.5rem 0 1rem;">3.4 Controle de Sequenciamento (GLSP)</h3>
+                <table>
+                    <tr><th>Restrição</th><th>Fórmula</th><th>Descrição</th></tr>
+                    <tr><td>Único Setup</td><td>\(\sum_{i,j} Z_{ijt} \le 1\)</td><td>Máximo uma troca por período</td></tr>
+                    <tr><td>Único Estado</td><td>\(\sum_{i} ZA_{it} \le 1\)</td><td>Máquina configurada para um produto</td></tr>
+                    <tr><td>Conexão de Setup</td><td>\(Z_{ijt} \le ZA_{jt}\)</td><td>Se troca de \(j\) para \(i\), estado era \(j\)</td></tr>
+                </table>
+
+                <h3 style="margin: 1.5rem 0 1rem;">3.5 Condições Iniciais</h3>
+                <div class="alert alert-warning">
+                    <strong>⚠️ Importante:</strong> O modelo fixa \(ZA_{k,0} = 1\) para o produto \(k\) inicial da linha. Isso força que o primeiro setup seja compatível com o produto que já está na máquina.
+                </div>
+            </div>
+        </div>
+
+        <!-- INSTÂNCIAS -->
+        <div class="section" id="instancias">
+            <div class="section-header" onclick="toggleSection(this)">
+                <h2>4. Estrutura das Instâncias (Inputs)</h2>
+                <span class="toggle">▼</span>
+            </div>
+            <div class="section-content">
+                
+                <div class="flow-diagram">
+┌─────────────────────────────────────────────────────────────────┐
+│                    ARQUIVOS DE ENTRADA                          │
+├─────────────────────────────────────────────────────────────────┤
+│  Production Need.csv  ──────►  Demanda (Dᵢₜ)                    │
+│  Production Rate.csv  ──────►  Capacidade (Cₜ) e Tempo (Tₜ)     │
+│  Initial Setup.csv    ──────►  Estado Inicial (ZAₖ₀)            │
+│  Setup Matrix         ──────►  Custos (SCᵢⱼ) e Tempos (STᵢⱼ)    │
+└─────────────────────────────────────────────────────────────────┘
+                </div>
+
+                <div class="grid-2" style="margin-top: 1.5rem;">
+                    <div class="card">
+                        <h4>📦 Production Need.csv</h4>
+                        <p><strong>Conteúdo:</strong> Tabela com datas como colunas e SKUs como linhas</p>
+                        <p><strong>Mapeia para:</strong> Demanda \(D_{it}\)</p>
+                        <p><strong>Lógica:</strong> Agrupa demandas por <code>planning_hours_slot</code></p>
+                    </div>
+                    <div class="card">
+                        <h4>⚡ Production Rate.csv</h4>
+                        <p><strong>Conteúdo:</strong> Capacidade da linha (unidades/tempo) por dia</p>
+                        <p><strong>Mapeia para:</strong> \(T_t\) e \(C_t\)</p>
+                        <p><strong>Cálculo:</strong> \(T_t = 1 / \text{Rate}\)</p>
+                    </div>
+                    <div class="card">
+                        <h4>🔧 Initial Setup.csv</h4>
+                        <p><strong>Conteúdo:</strong> SKU inicial na linha</p>
+                        <p><strong>Mapeia para:</strong> \(ZA_{i0}\)</p>
+                        <p><strong>Exemplo:</strong> Linha começa com Produto A → \(ZA_{A,0} = 1\)</p>
+                    </div>
+                    <div class="card">
+                        <h4>🔄 Setup Matrix</h4>
+                        <p><strong>Conteúdo:</strong> Custos e tempos de troca entre SKUs</p>
+                        <p><strong>Mapeia para:</strong> \(SC_{ij}\) e \(ST_{ij}\)</p>
+                        <p><strong>Gerado por:</strong> <code>_gen_setup_cost_matrix()</code></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- IMPLEMENTAÇÃO -->
+        <div class="section" id="implementacao">
+            <div class="section-header" onclick="toggleSection(this)">
+                <h2>5. Implementação (Python/PuLP)</h2>
+                <span class="toggle">▼</span>
+            </div>
+            <div class="section-content">
+                
+                <table>
+                    <tr><th>Componente</th><th>Detalhes</th></tr>
+                    <tr>
+                        <td><strong>Geração de Períodos</strong></td>
+                        <td><code>_gen_periods()</code> - Discretiza o tempo. Slots de 4h → blocos T₁, T₂, ...</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Solver Primário</strong></td>
+                        <td>Gurobi (MIPFocus=2, Heurísticas=0.5)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Solver Fallback</strong></td>
+                        <td>CBC (PuLP default)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Labels Seguros</strong></td>
+                        <td><code>_secure_label()</code> - Renomeia SKUs para PROD1, PROD2...</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Output</strong></td>
+                        <td><code>build_results()</code> → ProductionItem, SetupItem</td>
+                    </tr>
+                </table>
+
+                <div class="alert alert-warning" style="margin-top: 1rem;">
+                    <strong>⚠️ Performance:</strong> Buckets menores = mais precisão, mas muito mais variáveis binárias \(O(n^2 \cdot t)\). Ajuste do tamanho do período é a principal alavanca.
+                </div>
+
+                <h3 style="margin: 1.5rem 0 1rem;">Fluxo do Modelo</h3>
+                <div class="flow-diagram">
+     ┌──────────────────┐
+     │  DADOS DE ENTRADA │
+     │  (Arquivos CSV)   │
+     └────────┬─────────┘
+              │
+              ▼
+┌────────────────────────────────────────┐
+│           PRÉ-PROCESSAMENTO            │
+│  • Geração de períodos (T₁, T₂, ...)   │
+│  • Agregação de demandas               │
+│  • Cálculo de matriz de setup          │
+└────────────────────┬───────────────────┘
+              │
+              ▼
+┌────────────────────────────────────────┐
+│        MODELO DE OTIMIZAÇÃO            │
+│  • Variáveis: X, I, B (contínuas)      │
+│  • Variáveis: Z, ZA (binárias)         │
+│  • Restrições: Balanço, Capacidade,    │
+│                Sequenciamento          │
+└────────────────────┬───────────────────┘
+              │
+              ▼
+┌────────────────────────────────────────┐
+│             SOLVER (MIP)               │
+│  • Gurobi (primário)                   │
+│  • CBC (fallback)                      │
+└────────────────────┬───────────────────┘
+              │
+              ▼
+┌────────────────────────────────────────┐
+│         SAÍDA / RESULTADOS             │
+│  • Sequência ótima de produção         │
+│  • Níveis de estoque/backlog           │
+│  • Gráficos de Gantt                   │
+└────────────────────────────────────────┘
+                </div>
+            </div>
+        </div>
+
+        <!-- RESUMO -->
+        <div class="section">
+            <div class="section-header" onclick="toggleSection(this)">
+                <h2>📋 Resumo Rápido</h2>
+                <span class="toggle">▼</span>
+            </div>
+            <div class="section-content">
+                <div class="alert alert-success">
+                    <strong>🎯 Pergunta que o modelo responde:</strong><br>
+                    "Qual a sequência de produção que minimiza meus custos de troca e atrasos, respeitando a capacidade da linha e o estado atual da máquina?"
+                </div>
+
+                <table style="margin-top: 1rem;">
+                    <tr><th>Aspecto</th><th>Valor</th></tr>
+                    <tr><td>Complexidade</td><td>\(O(n^2 \cdot t)\) variáveis binárias</td></tr>
+                    <tr><td>Alavanca de Performance</td><td>Tamanho do período \(C_t\)</td></tr>
+                    <tr><td>Uso</td><td>Planejamento tático de curto/médio prazo</td></tr>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        function toggleSection(header) {
+            const section = header.parentElement;
+            section.classList.toggle('collapsed');
+        }
+
+        // Expand all by default except resumo
+        document.querySelectorAll('.section').forEach((section, index) => {
+            if (index > 0) { // Keep first section open
+                // section.classList.add('collapsed');
+            }
+        });
+    </script>
+</body>
+</html>
