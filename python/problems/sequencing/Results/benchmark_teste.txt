@@ -1,0 +1,15 @@
+
+==============================================================
+# TESTE - 2026-01-13 01:09:39
+# Tempo: 150s por instância
+--------------------------------------------------------------
+>> Instancia carregada: 100 produtos, 5 maquinas.
+
+>> Iniciando Teste de Throughput (150 segundos)...
+------------------------------------------------
+TEMPO TOTAL:      150.00 s
+TOTAL AVALIACOES: 3606700
+VELOCIDADE:       24043 sol/s
+MELHOR CUSTO:     399.59
+------------------------------------------------
+

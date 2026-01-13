@@ -1,0 +1,27 @@
+
+--- Busca iniciada: seeds 0 a 49 ---
+CLOSE: Seed 7: Custo = 425.13 (diff = 3.28)
+CLOSE: Seed 14: Custo = 430.70 (diff = 2.29)
+CLOSE: Seed 26: Custo = 431.26 (diff = 2.85)
+CLOSE: Seed 32: Custo = 424.90 (diff = 3.51)
+CLOSE: Seed 35: Custo = 423.50 (diff = 4.91)
+CLOSE: Seed 43: Custo = 432.46 (diff = 4.05)
+CLOSE: Seed 49: Custo = 425.82 (diff = 2.59)
+
+--- Busca iniciada: seeds 50 a 149 ---
+CLOSE: Seed 70: Custo = 431.91 (diff = 3.50)
+CLOSE: Seed 73: Custo = 426.35 (diff = 2.06)
+CLOSE: Seed 79: Custo = 427.57 (diff = 0.84)
+CLOSE: Seed 85: Custo = 431.51 (diff = 3.10)
+CLOSE: Seed 94: Custo = 423.57 (diff = 4.84)
+CLOSE: Seed 105: Custo = 424.02 (diff = 4.39)
+CLOSE: Seed 132: Custo = 432.74 (diff = 4.33)
+CLOSE: Seed 136: Custo = 431.89 (diff = 3.48)
+
+--- Busca iniciada: seeds 1000 a 1099 ---
+CLOSE: Seed 1014: Custo = 427.09 (diff = 1.32)
+CLOSE: Seed 1015: Custo = 424.73 (diff = 3.68)
+CLOSE: Seed 1025: Custo = 427.42 (diff = 0.99)
+CLOSE: Seed 1060: Custo = 425.80 (diff = 2.61)
+CLOSE: Seed 1072: Custo = 431.74 (diff = 3.33)
+CLOSE: Seed 1074: Custo = 429.26 (diff = 0.85)

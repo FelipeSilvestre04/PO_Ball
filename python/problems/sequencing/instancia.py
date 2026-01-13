@@ -83,6 +83,10 @@ def generate_li_milne_instance(num_products, num_reactors, filename):
     print(f"Instância {filename} gerada com sucesso (Capacidade Corrigida).")
 
 if __name__ == "__main__":
+    # Seed fixa para reprodutibilidade das instâncias v2
+    # IMPORTANTE: Não altere este valor para manter consistência com experimentos anteriores
+    np.random.seed(79)
+    
     # Caminho base relativo
     base_path = os.path.join(current_directory, 'instances')
     
