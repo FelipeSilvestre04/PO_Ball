@@ -41,7 +41,12 @@ std::atomic<bool> stop_execution(false);
 std::vector <TSol> pool;                    
 
 // RKO library
-#include "../Problem/Problem.h"
+// #include "../Problem/Problem.h"
+// Opção 1: Best Fit
+// #include "../Problem/Problem_BestFit.h"
+
+// Opção 2: Nearest Neighbor
+#include "../Problem/Problem_NN.h"
 #include "../Output.h"     
 #include "../Method.h"
 #include "../QLearning.h"
@@ -117,7 +122,7 @@ int main(int argc, char *argv[ ])
 
     while (fgets(line, sizeof(line), fileConf)) {
         // Remove newline character
-        line[strcspn(line, "\n")] = '\0';
+        line[strcspn(line, "\r\n")] = '\0';
 
         // Check for metaheuristic names
         int idx = -1;

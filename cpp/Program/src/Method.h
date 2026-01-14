@@ -801,7 +801,7 @@ void readParameters(const char*  method, int control,
 
         // Reading the file line by line
         while (fgets(line, sizeof(line), file) != NULL) {
-            line[strcspn(line, "\n")] = '\0';  // remove newline
+            line[strcspn(line, "\r\n")] = '\0';  // remove newline
 
             if (strcmp(line, method) == 0) {
                 // Read the parameter values

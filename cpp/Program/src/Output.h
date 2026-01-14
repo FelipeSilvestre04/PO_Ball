@@ -23,9 +23,9 @@ void WriteSolutionScreen(const char *algorithms[], int numMH, TSol s,
 		printf("%s | ", algorithms[i]);
 	printf("\nBest MH: %s \nInstance: %s \nsol: ", s.nameMH, instance);
 	for (int i=0; i<data.n; i++)
-		printf("%.3lf ", s.rk[i]);
+		printf("%.25lf ", s.rk[i]);
 
-	printf("\nofv: %.5lf", s.ofv); 
+	printf("\nofv: %.25lf", s.ofv); 
 	printf("\nTotal time: %.3f",timeTotal);
 	printf("\nBest time: %.3f\n\n",timeBest);
 
@@ -65,9 +65,9 @@ void WriteSolution(const char *algorithms[], int numMH, TSol s,
 
 	fprintf(solFile,"\nSol: ");
 	for (int i=0; i<data.n; i++)
-		fprintf(solFile,"%.3lf ", s.rk[i]);
+		fprintf(solFile,"%.25lf ", s.rk[i]);
 
-	fprintf(solFile,"\nofv: %lf", s.ofv);
+	fprintf(solFile,"\nofv: %.25lf", s.ofv);
   	fprintf(solFile,"\nBest time: %.3f",timeBest);
 	fprintf(solFile,"\nTotal time:%.3f \n",timeTotal);
 

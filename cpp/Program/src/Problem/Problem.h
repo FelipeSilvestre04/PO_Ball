@@ -31,6 +31,9 @@ struct TProblemData
     // Vamos usar linearização: index = (prev * num_prod * num_mach) + (curr * num_mach) + mach
     std::vector<double> setup_costs;
     std::vector<double> setup_times;
+    
+    // Pre-computed: Average setup cost for each product (incompatibility metric)
+    std::vector<double> avg_setup_costs;
 };
 
 // 2. LEITURA DE DADOS
@@ -94,106 +97,144 @@ void ReadData(char name[], TProblemData &data)
     }
     
     file.close();
+    
+    // Pre-calculate average setup cost for each product (look-ahead heuristic)
+    // Higher value = product is harder to cluster (incompatible with others)
+    data.avg_setup_costs.resize(data.num_products, 0.0);
+    for (int i = 0; i < data.num_products; ++i) {
+        double total = 0.0;
+        int count = 0;
+        for (int j = 0; j < data.num_products; ++j) {
+            if (i == j) continue;
+            for (int m = 0; m < data.num_machines; ++m) {
+                // Cost from i to j
+                int idx1 = (i * data.num_products * data.num_machines) + (j * data.num_machines) + m;
+                // Cost from j to i
+                int idx2 = (j * data.num_products * data.num_machines) + (i * data.num_machines) + m;
+                total += data.setup_costs[idx1] + data.setup_costs[idx2];
+                count += 2;
+            }
+        }
+        data.avg_setup_costs[i] = (count > 0) ? (total / count) : 0.0;
+    }
 }
 
-// 3. DECODER (Cheapest Insertion / Best Fit)
+// ============================================================================
+// 3. DECODER (Fitting Function with Look-Ahead Heuristic)
+// ============================================================================
+// Instead of greedy "min cost", uses Score = Priority / (ImmediateCost + β*FuturePenalty)
+// Reference: Kierkosz & Łuczak (2019) Fitting Function concept
+
 double Decoder(TSol &s, const TProblemData &data)
 {
-    // 1. Ordena produtos pelas chaves (argsort)
-    std::vector<int> sorted_products(data.n);
+    // === FITTING FUNCTION PARAMETERS ===
+    const double ALPHA = 10.0;   // Priority exponent (favor large demands)
+    const double BETA = 1.0;    // Weight for future penalty (look-ahead)
+    const double EPSILON = 1e-5; // Avoid division by zero
+    
+    const int np = data.num_products;
+    const int nm = data.num_machines;
+    
+    // 1. Sort products by keys
+    std::vector<int> sorted_products(np);
     std::iota(sorted_products.begin(), sorted_products.end(), 0);
     std::sort(sorted_products.begin(), sorted_products.end(), [&](int i, int j) {
         return s.rk[i] < s.rk[j];
     });
 
-    // Estruturas da solução
-    // Usamos vector de vectors para as sequências
-    std::vector<std::vector<int>> machine_seqs(data.num_machines);
-    std::vector<double> machine_loads(data.num_machines, 0.0);
+    // Solution structures
+    std::vector<std::vector<int>> machine_seqs(nm);
+    std::vector<double> machine_loads(nm, 0.0);
     double total_setup_cost = 0.0;
     double penalty = 0.0;
 
-    // 2. Alocação Gulosa
-    for (int product_idx : sorted_products) {
+    // 2. Allocation with Fitting Function
+    for (int p : sorted_products) {
+        // Pre-compute priority for this product
+        double priority = std::pow(data.demands[p], ALPHA);
+        double future_penalty = data.avg_setup_costs[p];  // Look-ahead: incompatibility
+        
         int best_machine = -1;
         int best_pos = -1;
-        double min_delta_cost = std::numeric_limits<double>::infinity();
+        double max_score = -1e18;        // Maximize score (not minimize cost)
+        double best_delta_cost = 0.0;
         double best_time_increase = 0.0;
 
-        // Testa todas as máquinas
-        for (int m = 0; m < data.num_machines; ++m) {
-            double rate = data.production_rates[product_idx * data.num_machines + m];
+        for (int m = 0; m < nm; ++m) {
+            double rate = data.production_rates[p * nm + m];
             if (rate <= 1e-6) continue;
 
-            double prod_time = data.demands[product_idx] / rate;
-            const auto& current_seq = machine_seqs[m];
-            int seq_len = current_seq.size();
+            double prod_time = data.demands[p] / rate;
+            const auto& seq = machine_seqs[m];
+            int seq_len = seq.size();
 
-            // Testa todas as posições (0 a seq_len)
+            // Find best position in this machine (Cheapest Insertion)
+            double best_m_cost = 1e18;
+            int best_m_pos = -1;
+            double best_m_time = 0.0;
+
             for (int pos = 0; pos <= seq_len; ++pos) {
-                int prev_prod = (pos == 0) ? data.initial_state[m] : current_seq[pos - 1];
-                int next_prod = (pos < seq_len) ? current_seq[pos] : -1;
+                int prev = (pos == 0) ? data.initial_state[m] : seq[pos - 1];
+                int next = (pos < seq_len) ? seq[pos] : -1;
 
-                // Acesso linearizado aos custos/tempos: [i][j][m]
-                // Index = (i * num_prods * num_mach) + (j * num_mach) + m
-                
-                // Delta Custo
-                int idx_prev_curr = (prev_prod * data.num_products * data.num_machines) + (product_idx * data.num_machines) + m;
-                double cost_add = data.setup_costs[idx_prev_curr];
+                // Index helper
+                auto idx = [&](int i, int j) {
+                    return (i * np * nm) + (j * nm) + m;
+                };
+
+                // Delta cost
+                double cost_add = data.setup_costs[idx(prev, p)];
                 double cost_rem = 0.0;
-
-                if (next_prod != -1) {
-                    int idx_curr_next = (product_idx * data.num_products * data.num_machines) + (next_prod * data.num_machines) + m;
-                    int idx_prev_next = (prev_prod * data.num_products * data.num_machines) + (next_prod * data.num_machines) + m;
-                    cost_add += data.setup_costs[idx_curr_next];
-                    cost_rem = data.setup_costs[idx_prev_next];
+                if (next != -1) {
+                    cost_add += data.setup_costs[idx(p, next)];
+                    cost_rem = data.setup_costs[idx(prev, next)];
                 }
                 double delta_cost = cost_add - cost_rem;
 
-                // Delta Tempo
-                int idx_time_prev_curr = (prev_prod * data.num_products * data.num_machines) + (product_idx * data.num_machines) + m;
-                double time_add = data.setup_times[idx_time_prev_curr];
+                // Delta time
+                double time_add = data.setup_times[idx(prev, p)];
                 double time_rem = 0.0;
-
-                if (next_prod != -1) {
-                    int idx_time_curr_next = (product_idx * data.num_products * data.num_machines) + (next_prod * data.num_machines) + m;
-                    int idx_time_prev_next = (prev_prod * data.num_products * data.num_machines) + (next_prod * data.num_machines) + m;
-                    time_add += data.setup_times[idx_time_curr_next];
-                    time_rem = data.setup_times[idx_time_prev_next];
+                if (next != -1) {
+                    time_add += data.setup_times[idx(p, next)];
+                    time_rem = data.setup_times[idx(prev, next)];
                 }
                 double delta_time = time_add + prod_time - time_rem;
 
-                // Verifica Capacidade
+                // Check capacity
                 if (machine_loads[m] + delta_time <= data.machine_capacities[m]) {
-                    if (delta_cost < min_delta_cost) {
-                        min_delta_cost = delta_cost;
-                        best_machine = m;
-                        best_pos = pos;
-                        best_time_increase = delta_time;
+                    if (delta_cost < best_m_cost) {
+                        best_m_cost = delta_cost;
+                        best_m_pos = pos;
+                        best_m_time = delta_time;
                     }
-                    // Desempate por taxa (opcional, se quiser idêntico ao Python)
-                    else if (std::abs(delta_cost - min_delta_cost) < 1e-6) {
-                        if (best_machine != -1) {
-                            double curr_rate = data.production_rates[product_idx * data.num_machines + best_machine];
-                            if (rate > curr_rate) {
-                                best_machine = m;
-                                best_pos = pos;
-                                best_time_increase = delta_time;
-                            }
-                        }
-                    }
+                }
+            }
+
+            // If we found a valid position, compute Fitting Score
+            if (best_m_pos != -1) {
+                // Score = Priority / (ImmediateCost + β*FuturePenalty + ε)
+                double immediate_cost = std::max(best_m_cost, 0.0) + EPSILON;
+                double denominator = immediate_cost + BETA * future_penalty;
+                double score = priority / denominator;
+
+                if (score > max_score) {
+                    max_score = score;
+                    best_machine = m;
+                    best_pos = best_m_pos;
+                    best_delta_cost = best_m_cost;
+                    best_time_increase = best_m_time;
                 }
             }
         }
 
-        // Realiza Alocação
+        // Perform allocation
         if (best_machine != -1) {
-            machine_seqs[best_machine].insert(machine_seqs[best_machine].begin() + best_pos, product_idx);
+            machine_seqs[best_machine].insert(
+                machine_seqs[best_machine].begin() + best_pos, p);
             machine_loads[best_machine] += best_time_increase;
-            total_setup_cost += min_delta_cost;
+            total_setup_cost += best_delta_cost;
         } else {
-            // Penalidade
-            penalty += 100000.0 + (data.demands[product_idx] * 1000.0);
+            penalty += 100000.0 + (data.demands[p] * 1000.0);
         }
     }
     
@@ -208,6 +249,7 @@ void FreeMemoryProblem(TProblemData &data)
     data.production_rates.clear();
     data.setup_costs.clear();
     data.setup_times.clear();
+    data.avg_setup_costs.clear();
 }
 
 // Função auxiliar para imprimir a solução na tela (C++ -> Python check)
