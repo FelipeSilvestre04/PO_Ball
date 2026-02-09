@@ -14,6 +14,7 @@ class SolverStatus(Enum):
     SOLVED_OPTIMAL = 1
     SOLVED_NOT_OPTIMAL = 2
     INFEASIBLE = 3
+    UNKNOWN = 4
 
 
 @dataclass
